@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generador de Códigos QR</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+  <div class="container py-5">
+    <h1 class="mb-4">Generador de Códigos QR con SKUs</h1>
+    <p class="text-muted">Escribe o pega tus SKUs, uno por línea. Luego presiona <strong>Generar</strong>.</p>
+    <div class="mb-3">
+      <textarea id="skuInput" class="form-control" rows="5" placeholder="SKU1&#10;SKU2&#10;SKU3"></textarea>
+    </div>
+    <div class="mb-4">
+      <button id="generateBtn" class="btn btn-primary me-2">Generar</button>
+      <button id="downloadAllBtn" class="btn btn-success">Descargar Todos</button>
+    </div>
+    <div id="qrContainer" class="row"></div>
+  </div>
+
+  <!-- Librerías necesarias -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+  <script>
+    const generateBtn = document.getElementById('generateBtn');
+    const downloadAllBtn = document.getElementById('downloadAllBtn');
+    const skuInput = document.getElementById('skuInput');
+    const qrContainer = document.getElementById('qrContainer');
+
+    generateBtn.addEventListener('click', () => {
+      qrContainer.innerHTML = '';
+      const skus = skuInput.value.split('\n').map(s => s.trim()).filter(s => s);
+      skus.forEach((sku, i) => {
+        const col = document.createElement('div');
+        col.className = 'qr-item col-sm-6 col-md-4 col-lg-3 mb-4 text-center';
+
+        // Contenedor QR
+        const qrDiv = document.createElement('div');
+        qrDiv.id = `qr-${i}`;
+        col.appendChild(qrDiv);
+
+        // Texto SKU
+        const label = document.createElement('p');
+        label.textContent = sku;
+        label.className = 'mt-2 fw-bold';
+        col.appendChild(label);
+
+        // Botón descargar individual
+        const dlBtn = document.createElement('button');
+        dlBtn.innerText = 'Descargar';
+        dlBtn.className = 'btn btn-outline-secondary btn-sm mb-2';
+        dlBtn.addEventListener('click', () => {
+          const canvas = qrDiv.querySelector('canvas');
+          if (!canvas) return;
+          canvas.toBlob(blob => saveAs(blob, `${sku}.png`));
+        });
+        col.appendChild(dlBtn);
+
+        qrContainer.appendChild(col);
+        new QRCode(qrDiv, { text: sku, width: 128, height: 128 });
+      });
+    });
+
+    downloadAllBtn.addEventListener('click', async () => {
+      const zip = new JSZip();
+      document.querySelectorAll('.qr-item').forEach(item => {
+        const sku = item.querySelector('p').textContent;
+        const canvas = item.querySelector('canvas');
+        if (canvas) {
+          const dataUrl = canvas.toDataURL('image/png');
+          const base64 = dataUrl.split(',')[1];
+          zip.file(`${sku}.png`, base64, { base64: true });
+        }
+      });
+      const blob = await zip.generateAsync({ type: 'blob' });
+      saveAs(blob, 'qrcodes.zip');
+    });
+  </script>
+</body>
+</html>
